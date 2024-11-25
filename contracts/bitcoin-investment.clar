@@ -65,3 +65,10 @@
         )
     )
 )
+
+(define-private (get-proposal-status (proposal-id uint))
+    (match (map-get? proposals proposal-id)
+        proposal (get status proposal)
+        "NOT_FOUND"
+    )
+)
