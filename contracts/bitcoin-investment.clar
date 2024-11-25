@@ -29,3 +29,20 @@
         rewards-claimed: uint
     }
 )
+
+(define-map proposals 
+    uint 
+    {
+        proposer: principal,
+        title: (string-ascii 100),
+        description: (string-ascii 500),
+        amount: uint,
+        recipient: principal,
+        start-block: uint,
+        end-block: uint,
+        yes-votes: uint,
+        no-votes: uint,
+        status: (string-ascii 20),
+        executed: bool
+    }
+)
