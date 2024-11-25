@@ -11,3 +11,11 @@
 (define-constant ERR-INSUFFICIENT-BALANCE (err u105))
 (define-constant ERR-PROPOSAL-NOT-ACTIVE (err u106))
 (define-constant ERR-INVALID-STATUS (err u107))
+
+;; Data Variables
+(define-data-var dao-owner principal tx-sender)
+(define-data-var total-staked uint u0)
+(define-data-var proposal-count uint u0)
+(define-data-var quorum-threshold uint u500) ;; 50% in basis points
+(define-data-var proposal-duration uint u144) ;; ~24 hours in blocks
+(define-data-var min-proposal-amount uint u1000000) ;; in uSTX
