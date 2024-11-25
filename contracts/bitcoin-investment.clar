@@ -2,6 +2,7 @@
 ;; summary: A decentralized autonomous organization for collective Bitcoin investment and yield generation.
 ;; description: This smart contract implements a DAO that allows members to stake tokens, create and vote on proposals, and execute approved proposals for collective Bitcoin investment. The contract includes functions for staking and unstaking tokens, creating and voting on proposals, and executing proposals based on the voting results. It also provides read-only functions to retrieve information about members, proposals, and the DAO itself.
 
+
 ;; Constants
 (define-constant ERR-NOT-AUTHORIZED (err u100))
 (define-constant ERR-INVALID-AMOUNT (err u101))
@@ -58,11 +59,9 @@
 )
 
 (define-private (is-member (address principal))
-    (default-to false 
-        (match (map-get? members address)
-            member (> (get staked-amount member) u0)
-            false
-        )
+    (match (map-get? members address)
+        member (some (> (get staked-amount member) u0))
+        none
     )
 )
 
@@ -76,8 +75,8 @@
 (define-private (calculate-voting-power (address principal))
     (default-to u0 
         (match (map-get? members address)
-            member (get staked-amount member)
-            u0
+            member (some (get staked-amount member))
+            none
         )
     )
 )
@@ -148,7 +147,7 @@
         (map-set proposals proposal-id {
             proposer: tx-sender,
             title: title,
-            description: description,
+            description: (default-to "" (some description)),
             amount: amount,
             recipient: recipient,
             start-block: block-height,
@@ -170,7 +169,7 @@
         (voter-power (calculate-voting-power tx-sender))
     )
     (begin
-        (asserts! (is-member tx-sender) ERR-NOT-AUTHORIZED)
+        (asserts! (unwrap! (is-member tx-sender) ERR-NOT-AUTHORIZED) ERR-NOT-AUTHORIZED)
         (asserts! (is-eq (get status proposal) "ACTIVE") ERR-PROPOSAL-NOT-ACTIVE)
         (asserts! (<= block-height (get end-block proposal)) ERR-PROPOSAL-EXPIRED)
         (asserts! (is-none (map-get? votes {proposal-id: proposal-id, voter: tx-sender})) ERR-ALREADY-VOTED)
