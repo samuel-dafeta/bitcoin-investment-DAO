@@ -1,7 +1,6 @@
 ;; title: Bitcoin Investment DAO
 ;; summary: A decentralized autonomous organization for collective Bitcoin investment and yield generation.
-;; description: This smart contract implements a DAO that allows members to stake tokens, create and vote on proposals, and execute approved proposals for collective Bitcoin investment. The contract includes functions for staking and unstaking tokens, creating and voting on proposals, and executing proposals based on the voting results. It also provides read-only functions to retrieve information about members, proposals, and the DAO itself.
-
+;; description: This smart contract implements a DAO that allows members to stake tokens, create and vote on proposals, and execute approved proposals for collective Bitcoin investment.
 
 ;; Constants
 (define-constant ERR-NOT-AUTHORIZED (err u100))
@@ -12,6 +11,10 @@
 (define-constant ERR-INSUFFICIENT-BALANCE (err u105))
 (define-constant ERR-PROPOSAL-NOT-ACTIVE (err u106))
 (define-constant ERR-INVALID-STATUS (err u107))
+(define-constant ERR-INVALID-OWNER (err u108))
+(define-constant ERR-INVALID-TITLE (err u109))
+(define-constant ERR-INVALID-DESCRIPTION (err u110))
+(define-constant ERR-INVALID-RECIPIENT (err u111))
 
 ;; Data Variables
 (define-data-var dao-owner principal tx-sender)
@@ -60,8 +63,22 @@
 
 (define-private (is-member (address principal))
     (match (map-get? members address)
-        member (some (> (get staked-amount member) u0))
-        none
+        member (> (get staked-amount member) u0)
+        false
+    )
+)
+
+(define-private (validate-string-ascii (input (string-ascii 500)))
+    (and 
+        (not (is-eq input ""))
+        (<= (len input) u500)
+    )
+)
+
+(define-private (validate-principal (address principal))
+    (and
+        (not (is-eq address tx-sender))
+        (not (is-eq address (as-contract tx-sender)))
     )
 )
 
@@ -73,11 +90,9 @@
 )
 
 (define-private (calculate-voting-power (address principal))
-    (default-to u0 
-        (match (map-get? members address)
-            member (some (get staked-amount member))
-            none
-        )
+    (match (map-get? members address)
+        member (get staked-amount member)
+        u0
     )
 )
 
@@ -85,6 +100,7 @@
 (define-public (initialize (new-owner principal))
     (begin
         (asserts! (is-dao-owner) ERR-NOT-AUTHORIZED)
+        (asserts! (validate-principal new-owner) ERR-INVALID-OWNER)
         (var-set dao-owner new-owner)
         (ok true)
     )
@@ -92,29 +108,30 @@
 
 ;; Membership Functions
 (define-public (stake-tokens (amount uint))
-    (let (
-        (current-balance (default-to {staked-amount: u0, last-reward-block: u0, rewards-claimed: u0} 
-            (map-get? members tx-sender)))
-    )
     (begin
         (asserts! (>= amount u0) ERR-INVALID-AMOUNT)
         (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
         
-        (map-set members tx-sender {
-            staked-amount: (+ (get staked-amount current-balance) amount),
-            last-reward-block: block-height,
-            rewards-claimed: (get rewards-claimed current-balance)
-        })
-        
-        (var-set total-staked (+ (var-get total-staked) amount))
-        (ok true)
-    ))
+        (let (
+            (current-balance (default-to 
+                {staked-amount: u0, last-reward-block: block-height, rewards-claimed: u0} 
+                (map-get? members tx-sender)))
+        )
+            (map-set members tx-sender {
+                staked-amount: (+ (get staked-amount current-balance) amount),
+                last-reward-block: block-height,
+                rewards-claimed: (get rewards-claimed current-balance)
+            })
+            
+            (var-set total-staked (+ (var-get total-staked) amount))
+            (ok true)
+        )
+    )
 )
 
 (define-public (unstake-tokens (amount uint))
     (let (
-        (current-balance (default-to {staked-amount: u0, last-reward-block: u0, rewards-claimed: u0} 
-            (map-get? members tx-sender)))
+        (current-balance (unwrap! (map-get? members tx-sender) ERR-NOT-AUTHORIZED))
     )
     (begin
         (asserts! (>= (get staked-amount current-balance) amount) ERR-INSUFFICIENT-BALANCE)
@@ -141,13 +158,17 @@
         (proposer-stake (calculate-voting-power tx-sender))
     )
     (begin
+        ;; Input validation
         (asserts! (>= proposer-stake (var-get min-proposal-amount)) ERR-NOT-AUTHORIZED)
         (asserts! (>= amount u0) ERR-INVALID-AMOUNT)
+        (asserts! (validate-string-ascii title) ERR-INVALID-TITLE)
+        (asserts! (validate-string-ascii description) ERR-INVALID-DESCRIPTION)
+        (asserts! (validate-principal recipient) ERR-INVALID-RECIPIENT)
         
         (map-set proposals proposal-id {
             proposer: tx-sender,
             title: title,
-            description: (default-to "" (some description)),
+            description: description,
             amount: amount,
             recipient: recipient,
             start-block: block-height,
@@ -169,7 +190,7 @@
         (voter-power (calculate-voting-power tx-sender))
     )
     (begin
-        (asserts! (unwrap! (is-member tx-sender) ERR-NOT-AUTHORIZED) ERR-NOT-AUTHORIZED)
+        (asserts! (is-member tx-sender) ERR-NOT-AUTHORIZED)
         (asserts! (is-eq (get status proposal) "ACTIVE") ERR-PROPOSAL-NOT-ACTIVE)
         (asserts! (<= block-height (get end-block proposal)) ERR-PROPOSAL-EXPIRED)
         (asserts! (is-none (map-get? votes {proposal-id: proposal-id, voter: tx-sender})) ERR-ALREADY-VOTED)
