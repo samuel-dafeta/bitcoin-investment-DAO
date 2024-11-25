@@ -131,3 +131,35 @@
         (ok true)
     ))
 )
+
+;; Proposal Functions
+(define-public (create-proposal (title (string-ascii 100)) 
+                              (description (string-ascii 500)) 
+                              (amount uint)
+                              (recipient principal))
+    (let (
+        (proposal-id (+ (var-get proposal-count) u1))
+        (proposer-stake (calculate-voting-power tx-sender))
+    )
+    (begin
+        (asserts! (>= proposer-stake (var-get min-proposal-amount)) ERR-NOT-AUTHORIZED)
+        (asserts! (>= amount u0) ERR-INVALID-AMOUNT)
+        
+        (map-set proposals proposal-id {
+            proposer: tx-sender,
+            title: title,
+            description: description,
+            amount: amount,
+            recipient: recipient,
+            start-block: block-height,
+            end-block: (+ block-height (var-get proposal-duration)),
+            yes-votes: u0,
+            no-votes: u0,
+            status: "ACTIVE",
+            executed: false
+        })
+        
+        (var-set proposal-count proposal-id)
+        (ok proposal-id)
+    ))
+)
