@@ -51,3 +51,17 @@
     {proposal-id: uint, voter: principal} 
     {vote: bool}
 )
+
+;; Private Functions
+(define-private (is-dao-owner)
+    (is-eq tx-sender (var-get dao-owner))
+)
+
+(define-private (is-member (address principal))
+    (default-to false 
+        (match (map-get? members address)
+            member (> (get staked-amount member) u0)
+            false
+        )
+    )
+)
