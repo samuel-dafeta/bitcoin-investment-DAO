@@ -163,3 +163,34 @@
         (ok proposal-id)
     ))
 )
+
+(define-public (vote (proposal-id uint) (vote-for bool))
+    (let (
+        (proposal (unwrap! (map-get? proposals proposal-id) ERR-PROPOSAL-NOT-FOUND))
+        (voter-power (calculate-voting-power tx-sender))
+    )
+    (begin
+        (asserts! (is-member tx-sender) ERR-NOT-AUTHORIZED)
+        (asserts! (is-eq (get status proposal) "ACTIVE") ERR-PROPOSAL-NOT-ACTIVE)
+        (asserts! (<= block-height (get end-block proposal)) ERR-PROPOSAL-EXPIRED)
+        (asserts! (is-none (map-get? votes {proposal-id: proposal-id, voter: tx-sender})) ERR-ALREADY-VOTED)
+        
+        (map-set votes {proposal-id: proposal-id, voter: tx-sender} {vote: vote-for})
+        
+        (map-set proposals proposal-id 
+            (merge proposal 
+                {
+                    yes-votes: (if vote-for 
+                        (+ (get yes-votes proposal) voter-power)
+                        (get yes-votes proposal)
+                    ),
+                    no-votes: (if vote-for 
+                        (get no-votes proposal)
+                        (+ (get no-votes proposal) voter-power)
+                    )
+                }
+            )
+        )
+        (ok true)
+    ))
+)
