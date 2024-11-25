@@ -90,3 +90,24 @@
         (ok true)
     )
 )
+
+;; Membership Functions
+(define-public (stake-tokens (amount uint))
+    (let (
+        (current-balance (default-to {staked-amount: u0, last-reward-block: u0, rewards-claimed: u0} 
+            (map-get? members tx-sender)))
+    )
+    (begin
+        (asserts! (>= amount u0) ERR-INVALID-AMOUNT)
+        (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+        
+        (map-set members tx-sender {
+            staked-amount: (+ (get staked-amount current-balance) amount),
+            last-reward-block: block-height,
+            rewards-claimed: (get rewards-claimed current-balance)
+        })
+        
+        (var-set total-staked (+ (var-get total-staked) amount))
+        (ok true)
+    ))
+)
