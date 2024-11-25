@@ -81,3 +81,12 @@
         )
     )
 )
+
+;; Public Functions
+(define-public (initialize (new-owner principal))
+    (begin
+        (asserts! (is-dao-owner) ERR-NOT-AUTHORIZED)
+        (var-set dao-owner new-owner)
+        (ok true)
+    )
+)
