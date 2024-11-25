@@ -72,3 +72,12 @@
         "NOT_FOUND"
     )
 )
+
+(define-private (calculate-voting-power (address principal))
+    (default-to u0 
+        (match (map-get? members address)
+            member (get staked-amount member)
+            u0
+        )
+    )
+)
