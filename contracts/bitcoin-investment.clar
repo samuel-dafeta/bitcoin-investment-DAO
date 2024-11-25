@@ -46,3 +46,8 @@
         executed: bool
     }
 )
+
+(define-map votes 
+    {proposal-id: uint, voter: principal} 
+    {vote: bool}
+)
