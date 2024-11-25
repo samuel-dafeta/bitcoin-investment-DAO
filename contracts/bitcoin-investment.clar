@@ -19,3 +19,13 @@
 (define-data-var quorum-threshold uint u500) ;; 50% in basis points
 (define-data-var proposal-duration uint u144) ;; ~24 hours in blocks
 (define-data-var min-proposal-amount uint u1000000) ;; in uSTX
+
+;; Data Maps
+(define-map members 
+    principal 
+    {
+        staked-amount: uint,
+        last-reward-block: uint,
+        rewards-claimed: uint
+    }
+)
