@@ -247,3 +247,12 @@
 (define-read-only (get-vote-info (proposal-id uint) (voter principal))
     (map-get? votes {proposal-id: proposal-id, voter: voter})
 )
+
+(define-read-only (get-dao-info)
+    {
+        total-staked: (var-get total-staked),
+        proposal-count: (var-get proposal-count),
+        quorum-threshold: (var-get quorum-threshold),
+        min-proposal-amount: (var-get min-proposal-amount)
+    }
+)
